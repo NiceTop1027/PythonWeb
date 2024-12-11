@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="kr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python 코드 실행기</title>
+    <!-- CodeMirror 라이브러리 로드 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.0/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.0/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.0/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.0/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.0/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.0/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+
+    <head>
+        <link rel="icon" href="favicon.ico" type="image/x-icon">
+        <!-- 다른 meta 태그나 링크들이 올 수 있습니다 -->
+        <style>
+            body {
+                margin: 0;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #000000, #434343);
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .header-bar {
+                display: flex;
+                align-items: center;
+                padding: 10px 20px;
+                background: linear-gradient(135deg, #1e1e1e, #333333);
+                color: white;
+                width: 100%;
+                box-sizing: border-box;
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 1000;
+                height: 70px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+                transition: background-color 0.3s ease;
+            }
+
+            .header-bar.scrolled {
+                background: linear-gradient(135deg, #2d2d2d, #444444);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            }
+
+            .header-bar .title-container {
+                display: flex;
+                align-items: center;
+                flex: 1;
+                white-space: nowrap;
+            }
+
+            .header-bar h1 {
+                margin: 0;
+                font-size: 24px;
+                color: white;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                transition: color 0.3s ease;
+            }
+
+            .header-bar h1:hover {
+                color: #ff5722;
+            }
+
+            .header-bar .menu-btn {
+                background: none;
+                border: none;
+                color: white;
+                font-size: 28px;
+                cursor: pointer;
+                margin-left: auto;
+                transition: opacity 0.3s ease, transform 0.3s ease;
+            }
+
+            .header-bar .menu-btn:hover {
+                opacity: 0.8;
+                transform: scale(1.1);
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 70px;
+                left: 0;
+                width: 260px;
+                height: calc(100% - 70px);
+                background: linear-gradient(135deg, #333333, #1e1e1e);
+                color: white;
+                transition: transform 0.3s ease, background-color 0.3s ease;
+                transform: translateX(-260px);
+                z-index: 999;
+                overflow-y: auto;
+                box-shadow: 4px 0 8px rgba(0, 0, 0, 0.3);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar .close-btn {
+                font-size: 28px;
+                color: white;
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 10px;
+                margin: 0;
+                text-align: right;
+                transition: opacity 0.3s ease, transform 0.3s ease;
+            }
+
+            .sidebar .close-btn:hover {
+                opacity: 0.8;
+                transform: scale(1.1);
+            }
+
+            .sidebar h2 {
+                margin: 0;
+                padding: 15px;
+                border-bottom: 1px solid #555;
+                text-align: center;
+                font-size: 24px;
+                background: linear-gradient(135deg, #333333, #444444);
+            }
+
+            .sidebar ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
+
+            .sidebar ul li {
+                border-bottom: 1px solid #555;
+            }
+
+            .sidebar ul li a {
+                display: block;
+                padding: 15px;
+                color: white;
+                text-decoration: none;
+                font-size: 18px;
+                transition: background-color 0.3s ease, color 0.3s ease;
+            }
+
+            .sidebar ul li a:hover {
+                background-color: #555;
+                color: #ff5722;
+            }
+
+            .main-content {
+                margin-top: 70px;
+                display: flex;
+                flex: 1;
+                overflow: hidden;
+                padding: 20px;
+                box-sizing: border-box;
+                flex-direction: column;
+            }
+
+            .center-container {
+                display: flex;
+                flex: 1;
+                justify-content: center;
+                align-items: center;
+                width: 100%;
+            }
+
+            .container {
+                background: linear-gradient(135deg, #ffffff, #f0f0f0);
+                padding: 20px;
+                border-radius: 12px;
+                box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+                width: 100%;
+                max-width: 1200px;
+                box-sizing: border-box;
+                overflow: hidden;
+                animation: fadeIn 1s ease-in;
+                transition: transform 0.3s ease;
+            }
+
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .editor-container {
+                display: flex;
+                flex-direction: column;
+                height: 80vh;
+                box-sizing: border-box;
+                overflow: hidden;
+            }
+
+            .editor-container textarea {
+                width: 100%;
+                border-radius: 8px;
+                border: 1px solid #ccc;
+                padding: 12px;
+                font-family: 'Courier New', Courier, monospace;
+                resize: vertical;
+                box-sizing: border-box;
+                transition: border-color 0.3s ease, box-shadow 0.3s ease;
+                height: 60%;
+                overflow: auto;
+                /* 추가된 부분: 스크롤바 문제 해결 */
+                font-size: 16px;
+                /* 추가된 부분: 모바일 호환성 향상 */
+                white-space: pre-wrap;
+                /* 추가된 부분: 줄바꿈 문제 해결 */
+            }
+
+            .editor-container textarea:focus {
+                border-color: #5c6bc0;
+                box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+                outline: none;
+            }
+
+            .editor-container button {
+                width: 100%;
+                padding: 14px;
+                background-color: #5c6bc0;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                cursor: pointer;
+                transition: background-color 0.3s ease, transform 0.3s ease;
+                margin-top: 10px;
+            }
+
+            .editor-container button:hover {
+                background-color: #3f51b5;
+                transform: translateY(-2px);
+            }
+
+            .editor-container button:active {
+                background-color: #303f9f;
+                transform: translateY(0);
+            }
+
+            .output {
+                padding: 12px;
+                background: linear-gradient(135deg, #ffffff, #f1f1f1);
+                border-radius: 8px;
+                border: 1px solid #ddd;
+                font-family: 'Courier New', Courier, monospace;
+                white-space: pre-wrap;
+                box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.2);
+                min-height: 60px;
+                overflow-y: auto;
+                margin-top: 10px;
+                transition: background-color 0.3s ease, border-color 0.3s ease;
+            }
+
+            .output:empty {
+                color: #888;
+            }
+
+            .footer {
+                background: linear-gradient(135deg, #333333, #1e1e1e);
+                color: white;
+                text-align: center;
+                padding: 10px;
+                font-size: 14px;
+                border-top: 1px solid #555;
+                position: fixed;
+                bottom: 0;
+                width: 100%;
+                box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+                box-sizing: border-box;
+            }
+
+            .footer .license-text {
+                font-weight: bold;
+                margin-bottom: 5px;
+            }
+
+            .footer .nice-top-text {
+                color: #ff5722;
+                font-weight: bold;
+            }
+
+            @media (max-width: 600px) {
+                .container {
+                    padding: 10px;
+                    width: 90%;
+                }
+
+                .editor-container button {
+                    padding: 12px;
+                    font-size: 14px;
+                }
+
+                .output {
+                    padding: 10px;
+                    font-size: 14px;
+                }
+            }
+
+            .fade-out {
+                opacity: 0;
+                transition: opacity 0.5s ease;
+            }
+        </style>
+        <script>
+            async function loadPyodideAndPackages() {
+                window.pyodide = await loadPyodide();
+            }
+            loadPyodideAndPackages(); // Pyodide 초기화
+
+            function initializeEditor() {
+                window.editor = CodeMirror.fromTextArea(document.getElementById('python-code'), {
+                    mode: 'python',
+                    theme: 'dracula',
+                    lineNumbers: true,
+                    indentUnit: 4,
+                    indentWithTabs: true,
+                    matchBrackets: true,
+                    autoCloseBrackets: true, // 자동 닫기 괄호 기능 활성화
+                    autoCloseTags: true // 자동 닫기 태그 기능 활성화
+                });
+            }
+
+            async function runPythonCode() {
+                const code = editor.getValue();
+                try {
+                    let output;
+                    pyodide.runPython(`
+import sys
+import io
+
+output = io.StringIO()
+sys.stdout = output
+`);
+                    await pyodide.runPythonAsync(code);
+                    output = pyodide.runPython('output.getvalue()');
+                    document.getElementById('output').innerText = output !== "" ? output : "코드를 실행한 후 결과가 없습니다.";
+                } catch (err) {
+                    document.getElementById('output').innerText = "에러 발생: " + err;
+                }
+            }
+
+            function toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.toggle('open');
+            }
+
+            function closeSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.remove('open');
+            }
+
+            function navigateTo(url) {
+                document.body.classList.add('fade-out');
+                setTimeout(() => {
+                    window.location.href = url;
+                }, 500);
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                initializeEditor();
+
+                window.addEventListener('scroll', () => {
+                    const headerBar = document.querySelector('.header-bar');
+                    if (window.scrollY > 50) {
+                        headerBar.classList.add('scrolled');
+                    } else {
+                        headerBar.classList.remove('scrolled');
+                    }
+                });
+            });
+        </script>
+    </head>
+
+<body>
+    <div class="header-bar">
+        <div class="title-container">
+            <h1>Python 코드 실행기</h1>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="center-container">
+            <div class="container">
+                <div id="home" class="content">
+                    <div class="editor-container">
+                        <textarea id="python-code" placeholder="여기에 Python 코드를 입력하세요..."></textarea>
+                        <button onclick="runPythonCode()">코드 실행</button>
+                        <div id="output" class="output"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="footer">
+        <div class="license-text">라이선스</div>
+        <div class="nice-top-text">© 2024 NiceTop</div>
+    </div>
+</body>
+
+</html>
