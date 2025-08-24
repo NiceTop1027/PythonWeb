@@ -1,4 +1,4 @@
 #Python 코드 실행기
 이 프로젝트는 웹에서 간단하게 파이썬 코드를 작성하고 실행할 수 있는 온라인 코드 실행기입니다.
 
-![https://i.ibb.co/YTbpmb2r/2025-08-24-8-29-00.png](https://i.ibb.co/DgL5hL4q/2025-08-24-8-29-00.png)
+![](https://i.ibb.co/DgL5hL4q/2025-08-24-8-29-00.png)
